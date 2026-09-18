@@ -1,3 +1,21 @@
+# Nuxt / WXT dev & build outputs
+.output
+.wxt
+.data
+.cache
+dist
+web-ext-artifacts
+stats.html
+stats-*.json
+
+# Dependencies
+node_modules
+
+# Environment variables & secrets (FONDAMENTALE)
+.env
+.env.*
+!.env.example
+
 # Logs
 logs
 *.log
@@ -7,18 +25,12 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-.output
-stats.html
-stats-*.json
-.wxt
-web-ext.config.ts
-
-# Editor directories and files
+# Editor directories and system files
 .vscode/*
 !.vscode/extensions.json
 .idea
 .DS_Store
+Thumbs.db
 *.suo
 *.ntvs*
 *.njsproj
