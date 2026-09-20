@@ -1,6 +1,7 @@
 import { MarkerTool } from '../parser/MarkerTool';
 import { TagPromptParser } from '../parser/TagPromptParser';
-import type { ParsedPromptTemplate, MetaPromptResponse, PromptMatch} from '../parser/types';
+import type { ParsedPromptTemplate, MetaPromptResponse, PromptMatch } from '../parser/types';
+import { MatchKind, InputType } from '../parser/types';
 
 const META_PROMPT_TEMPLATE = `<CONTEXT>
 You are an analysis module for a prompt management app. It lets users templatize prompts by isolating the parts that need subjective input. Instead of rewriting the whole prompt, return ONLY the coordinates of the points to change, in JSON, so the app — not you — applies the edits. This avoids truncation or unintended changes.
@@ -98,50 +99,41 @@ Input: "The recipient is |15||15| and the document is about |22|...|23|"
 
 ########`;
 
-/**
- * Use case responsible for preparing prompts for LLM analysis and parsing
- * LLM responses into structured prompt templates.
- */
 export const TemplatizePromptUseCase = {
-  /**
-   * Prepares the raw prompt by adding boundary markers and injecting it into the meta-prompt template.
-   *
-   * @param originalPrompt - The un-marked prompt template text.
-   * @returns Full meta-prompt ready to be sent to an LLM.
-   */
   preparePromptForLlm(originalPrompt: string): string {
     const { markedText } = MarkerTool.markText(originalPrompt);
     return META_PROMPT_TEMPLATE.replace('{{marked_text}}', markedText);
   },
 
-  /**
-   * Parses the LLM's JSON response and applies the detected matches to `originalPrompt`.
-   *
-   * Handles cases where the LLM wraps JSON inside Markdown code fences or extra text.
-   *
-   * @param originalPrompt - The original raw prompt text.
-   * @param llmJsonResponse - The raw text response returned by the LLM.
-   * @returns Parsed prompt template containing static and input field segments.
-   * @throws Error if no valid JSON object structure can be extracted or parsed.
-   */
   templatize(originalPrompt: string, llmJsonResponse: string): ParsedPromptTemplate {
     const jsonString = this.extractJsonObject(llmJsonResponse);
-    const response = JSON.parse(jsonString) as MetaPromptResponse;
+    const rawData = JSON.parse(jsonString);
 
-    if (!response || !Array.isArray(response.matches)) {
+    if (!rawData || !Array.isArray(rawData.matches)) {
       throw new Error('Invalid LLM response format: missing "matches" array.');
     }
 
-    return this.processLlmResponse(originalPrompt, response.matches);
+    const normalizedMatches: PromptMatch[] = rawData.matches.map((m: any) => {
+      const matchKindStr = String(m.matchKind ?? m.match_kind ?? 'edit').toLowerCase();
+      const fieldTypeStr = String(m.fieldType ?? m.field_type ?? 'smallText').toLowerCase();
+
+      let fieldType: InputType = InputType.SMALL_TEXT;
+      if (fieldTypeStr === 'text') fieldType = InputType.TEXT;
+      if (fieldTypeStr === 'options') fieldType = InputType.OPTIONS;
+
+      return {
+        startMarker: Number(m.startMarker ?? m.start_marker),
+        endMarker: Number(m.endMarker ?? m.end_marker),
+        matchKind: matchKindStr === 'insertion' ? MatchKind.INSERTION : MatchKind.EDIT,
+        originalText: m.originalText ?? m.original_text ?? null,
+        fieldType,
+        values: m.values ?? null,
+      };
+    });
+
+    return this.processLlmResponse(originalPrompt, normalizedMatches);
   },
 
-  /**
-   * Applies structured matches to `originalPrompt` and parses the generated `<INPUT>` tags.
-   *
-   * @param originalPrompt - The original raw prompt text.
-   * @param matches - List of matches extracted from LLM response.
-   * @returns Parsed prompt template with ordered segments.
-   */
   processLlmResponse(
     originalPrompt: string,
     matches: readonly PromptMatch[]
@@ -150,13 +142,6 @@ export const TemplatizePromptUseCase = {
     return TagPromptParser.parse(promptWithInputTags);
   },
 
-  /**
-   * Extracts the outermost `{...}` JSON object from raw response string,
-   * skipping string literals and handling nested brackets.
-   *
-   * @param rawResponse - Unfiltered string returned by LLM.
-   * @returns Extracted JSON string.
-   */
   extractJsonObject(rawResponse: string): string {
     const start = rawResponse.indexOf('{');
     if (start === -1) return rawResponse;

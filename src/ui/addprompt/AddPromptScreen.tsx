@@ -119,6 +119,14 @@ export const AddPromptScreen: React.FC<AddPromptScreenProps> = ({
     }
   };
 
+  const handleInsertTag = (type: string) => {
+    let tagToInsert = '<INPUT type="text">default</INPUT>';
+    if (type === 'smallText') tagToInsert = '<INPUT type="smallText">John</INPUT>';
+    if (type === 'options') tagToInsert = '<INPUT type="options" values="Red,Blue">Red</INPUT>';
+
+    setTemplateText((prev) => prev + tagToInsert);
+  };
+
   const handleSave = async () => {
     if (!title.trim() || !templateText.trim()) {
       setErrorMessage('Title and prompt text cannot be empty');
@@ -240,12 +248,25 @@ export const AddPromptScreen: React.FC<AddPromptScreenProps> = ({
             </div>
 
             {isRawMode ? (
-              <textarea
-                className="form-textarea full-editor"
-                value={templateText}
-                onChange={(e) => setTemplateText(e.target.value)}
-                placeholder='Use <INPUT type="text">default</INPUT> for dynamic fields'
-              />
+              <div className="raw-editor-container">
+                <textarea
+                  className="form-textarea full-editor"
+                  value={templateText}
+                  onChange={(e) => setTemplateText(e.target.value)}
+                  placeholder='Use <INPUT type="text">default</INPUT> for dynamic fields'
+                />
+                <div className="suggestions-chip-bar">
+                  <button className="chip" onClick={() => handleInsertTag('text')}>
+                    + Long Text
+                  </button>
+                  <button className="chip" onClick={() => handleInsertTag('smallText')}>
+                    + Short Text
+                  </button>
+                  <button className="chip" onClick={() => handleInsertTag('options')}>
+                    + Options
+                  </button>
+                </div>
+              </div>
             ) : (
               <div className="preview-container">
                 <InteractivePromptViewer

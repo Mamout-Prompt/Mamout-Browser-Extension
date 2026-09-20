@@ -230,3 +230,21 @@
 .btn-error:hover {
   background-color: rgba(255, 180, 171, 0.12);
 }
+
+.interactive-prompt-container textarea,
+.prompt-input-textarea {
+  width: 100%;
+  min-height: 42px;
+  padding: 8px 12px;
+  margin: 0;
+  box-sizing: border-box;
+  line-height: 1.4;
+  resize: vertical;
+}
+
+.input-field-wrapper {
+  display: flex;
+  flex-direction: column;
+  margin: 4px 0;
+  padding: 0;
+}

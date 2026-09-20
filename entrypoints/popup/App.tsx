@@ -163,7 +163,7 @@ export const App: React.FC = () => {
       .map((p) => ({
         id: p.id,
         title: p.title,
-        description: p.templateText || p.description,
+        description: p.description || p.templateText,
       }));
 
     setSearchState((prev) => ({
@@ -225,7 +225,7 @@ export const App: React.FC = () => {
           prompts: prompts.map((p) => ({
             id: p.id,
             title: p.title,
-            description: p.templateText || p.description,
+            description: p.description || p.templateText,
           })),
           selectedPromptId: homeSelectedId,
           isDeleteDialogVisible: isHomeDeleteVisible,

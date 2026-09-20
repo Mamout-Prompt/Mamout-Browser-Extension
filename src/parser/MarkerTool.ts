@@ -1,6 +1,5 @@
-import { MatchKind } from './types';
+import { MatchKind, InputType } from './types';
 import type { PromptMatch } from './types';
-import { InputType } from './types';
 
 /**
  * Result of marking a text with numbered position markers.
@@ -196,6 +195,19 @@ export const MarkerTool = {
 
       let contentStart = startOff + leftTrim;
       let contentEnd = endOff - rightTrim;
+
+      if (
+        m.matchKind === MatchKind.EDIT &&
+        m.originalText &&
+        m.originalText.trim().length > 0
+      ) {
+        const spanText = text.substring(startOff, endOff);
+        const idx = spanText.indexOf(m.originalText);
+        if (idx !== -1) {
+          contentStart = startOff + idx;
+          contentEnd = contentStart + m.originalText.length;
+        }
+      }
 
       if (contentStart > contentEnd) {
         contentStart = startOff;

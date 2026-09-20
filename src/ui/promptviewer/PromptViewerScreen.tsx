@@ -1,3 +1,4 @@
+import React, { useState } from 'react';
 import { InteractivePromptViewer, type PromptSegment } from './components/InteractivePromptViewer';
 import { InputTypeGuideDialog } from './components/InputTypeGuideDialog';
 import './PromptViewerScreen.css';
@@ -29,9 +30,15 @@ export const PromptViewerScreen: React.FC<PromptViewerScreenProps> = ({
     const nextIndex = (targetedInputIndex + 1) % inputSegments.length;
     setTargetedInputIndex(nextIndex);
 
-    const targetEl = document.getElementById(`input-field-${nextIndex}`);
-    if (targetEl) {
-      targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const targetWrapper = document.getElementById(`input-field-${nextIndex}`);
+    if (targetWrapper) {
+      const inputEl = targetWrapper.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
+        'input, textarea, select'
+      );
+      if (inputEl) {
+        inputEl.focus();
+        inputEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
     }
   };
 
