@@ -4,6 +4,8 @@ import { PromptViewerScreen } from '../promptviewer/PromptViewerScreen';
 import { type PromptSegment } from '../promptviewer/components/InteractivePromptViewer';
 import './PromptDetailScreen.css';
 
+declare const chrome: any;
+
 interface PromptDetailScreenProps {
   promptId: number;
   initialTitle: string;
@@ -13,6 +15,44 @@ interface PromptDetailScreenProps {
   onBackClick: () => void;
   onSavePrompt: (id: number, title: string, description: string, templateText: string) => void;
 }
+
+interface EditDraftData {
+  title: string;
+  description: string;
+  templateText: string;
+  inputValues: Record<string, string>;
+}
+
+const getDraftKey = (promptId: number) => `mamout_edit_prompt_draft_${promptId}`;
+
+const saveEditDraft = async (promptId: number, data: EditDraftData) => {
+  const key = getDraftKey(promptId);
+  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+    await chrome.storage.local.set({ [key]: data });
+  } else {
+    localStorage.setItem(key, JSON.stringify(data));
+  }
+};
+
+const loadEditDraft = async (promptId: number): Promise<EditDraftData | null> => {
+  const key = getDraftKey(promptId);
+  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+    const res = await chrome.storage.local.get(key);
+    return res[key] || null;
+  } else {
+    const item = localStorage.getItem(key);
+    return item ? JSON.parse(item) : null;
+  }
+};
+
+const clearEditDraft = async (promptId: number) => {
+  const key = getDraftKey(promptId);
+  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+    await chrome.storage.local.remove(key);
+  } else {
+    localStorage.removeItem(key);
+  }
+};
 
 export const parsePromptSegments = (text: string): PromptSegment[] => {
   const segments: PromptSegment[] = [];
@@ -94,6 +134,43 @@ export const PromptDetailScreen: React.FC<PromptDetailScreenProps> = ({
   const [inputValues, setInputValues] = useState<Record<string, string>>({});
   const [isEditingHeader, setIsEditingHeader] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isDraftLoaded, setIsDraftLoaded] = useState(false);
+
+  useEffect(() => {
+    const restoreDraft = async () => {
+      try {
+        const draft = await loadEditDraft(promptId);
+        if (draft) {
+          setTitle(draft.title ?? initialTitle);
+          setDescription(draft.description ?? initialDescription);
+          setTemplateText(draft.templateText ?? rawTemplateText);
+          setInputValues(draft.inputValues ?? {});
+        } else {
+          setTitle(initialTitle);
+          setDescription(initialDescription);
+          setTemplateText(rawTemplateText);
+          setInputValues({});
+        }
+      } catch (e) {
+        console.error('Errore nel caricamento della bozza di modifica:', e);
+      } finally {
+        setIsDraftLoaded(true);
+      }
+    };
+
+    restoreDraft();
+  }, [promptId, initialTitle, initialDescription, rawTemplateText]);
+
+  useEffect(() => {
+    if (!isDraftLoaded) return;
+
+    saveEditDraft(promptId, {
+      title,
+      description,
+      templateText,
+      inputValues,
+    });
+  }, [promptId, title, description, templateText, inputValues, isDraftLoaded]);
 
   const currentSegments = useMemo(() => {
     return parsePromptSegments(templateText);
@@ -104,7 +181,8 @@ export const PromptDetailScreen: React.FC<PromptDetailScreenProps> = ({
     setTimeout(() => setToastMessage(null), 2000);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    await clearEditDraft(promptId);
     onSavePrompt(promptId, title, description, templateText);
     showToast('Saved!');
   };
@@ -118,6 +196,10 @@ export const PromptDetailScreen: React.FC<PromptDetailScreenProps> = ({
     navigator.clipboard.writeText(compiled);
     showToast('Copied to clipboard!');
   };
+
+  if (!isDraftLoaded) {
+    return null;
+  }
 
   return (
     <div className="prompt-detail-screen">

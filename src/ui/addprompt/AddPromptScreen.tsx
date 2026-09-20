@@ -1,5 +1,6 @@
 import { TemplatizePromptUseCase } from '../../usecase/TemplatizePromptUseCase';
 import { InteractivePromptViewer, type PromptSegment } from '../promptviewer/components/InteractivePromptViewer';
+import { InputTypeGuideDialog } from '../promptviewer/components/InputTypeGuideDialog';
 import './AddPromptScreen.css';
 
 declare const chrome: any;
@@ -61,6 +62,7 @@ export const AddPromptScreen: React.FC<AddPromptScreenProps> = ({
 
   const [copyFeedback, setCopyFeedback] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showGuideDialog, setShowGuideDialog] = useState(false);
   const [isDraftLoaded, setIsDraftLoaded] = useState(false);
 
   useEffect(() => {
@@ -158,7 +160,7 @@ export const AddPromptScreen: React.FC<AddPromptScreenProps> = ({
           <div className="step-container">
             <p className="step-description">Give your prompt a name and description.</p>
             <div className="form-group">
-              <label className="form-label">Title *</label>
+              <label className="form-label">Title</label>
               <input
                 type="text"
                 className="form-input"
@@ -227,7 +229,19 @@ export const AddPromptScreen: React.FC<AddPromptScreenProps> = ({
         {step === 3 && (
           <div className="step-container">
             <div className="step3-controls">
-              <p className="step-description">Refine your prompt by adding or editing &lt;INPUT&gt; tags.</p>
+              <div className="step-description-container">
+                {isRawMode && (
+                  <button
+                    className="icon-button info-btn"
+                    onClick={() => setShowGuideDialog(true)}
+                    title="Open Input Guide"
+                  >
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+                    </svg>
+                  </button>
+                )}
+              </div>
               <button className="btn-toggle-mode" onClick={() => setIsRawMode(!isRawMode)}>
                 {isRawMode ? (
                   <>
@@ -302,6 +316,10 @@ export const AddPromptScreen: React.FC<AddPromptScreenProps> = ({
           </button>
         )}
       </footer>
+
+      {showGuideDialog && (
+        <InputTypeGuideDialog onDismiss={() => setShowGuideDialog(false)} />
+      )}
 
       {errorMessage && (
         <div className="dialog-overlay" onClick={() => setErrorMessage(null)}>

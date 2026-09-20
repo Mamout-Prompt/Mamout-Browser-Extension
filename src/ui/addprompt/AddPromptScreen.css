@@ -33,11 +33,42 @@
   gap: 12px;
 }
 
+.step-description-container {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.step-description-container .step-description {
+  margin: 0;
+}
+
 .step-description {
   font-size: 12px;
   opacity: 0.8;
   margin: 0 0 4px 0;
   line-height: 1.4;
+}
+
+.info-btn {
+  background: transparent;
+  border: none;
+  color: var(--md-sys-color-on-background);
+  opacity: 0.8;
+  padding: 2px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s ease, background-color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.info-btn:hover {
+  opacity: 1;
+  background-color: var(--md-sys-color-surface-variant);
 }
 
 .section-title {
@@ -99,7 +130,36 @@
 }
 
 .full-editor {
-  height: 320px;
+  height: 350px;
+}
+
+.raw-editor-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.suggestions-chip-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  background-color: var(--md-sys-color-surface-variant);
+  color: var(--md-sys-color-on-background);
+  border: none;
+  border-radius: 16px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.chip:hover {
+  background-color: var(--md-sys-color-primary);
+  color: var(--md-sys-color-background);
 }
 
 .btn {
@@ -114,6 +174,16 @@
 
 .btn:disabled {
   opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn:disabled,
+.btn-primary:disabled,
+.btn-success:disabled {
+  background-color: transparent;
+  color: var(--md-sys-color-on-background);
+  border-color: var(--md-sys-color-surface-variant);
+  opacity: 0.35;
   cursor: not-allowed;
 }
 
@@ -142,6 +212,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 8px;
 }
 
 .btn-toggle-mode {
@@ -157,6 +228,7 @@
   padding: 4px 8px;
   border-radius: 6px;
   transition: background-color 0.2s ease;
+  flex-shrink: 0;
 }
 
 .btn-toggle-mode:hover {
