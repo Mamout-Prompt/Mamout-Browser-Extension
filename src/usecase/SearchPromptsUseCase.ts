@@ -1,6 +1,5 @@
 import { liveQuery, type Observable } from 'dexie';
 import { db } from '../db/database';
-import { getSearchablePrompts } from '../db/repository';
 import type { PromptEntity, PromptSearchableDb } from '../types/prompt';
 
 /**
@@ -24,6 +23,7 @@ export const SearchPromptsUseCase = {
       id: item.id,
       title: item.title,
       description: item.description,
+      lastModified: item.lastModified,
     });
 
     if (trimmedQuery.length < this.MIN_QUERY_LENGTH) {
@@ -59,6 +59,7 @@ export const SearchPromptsUseCase = {
         title: p.title,
         description: p.description,
         templateText: contentMap.get(p.id ?? 0) ?? '',
+        lastModified: p.lastModified ?? Date.now(),
       }));
 
       return this.filterInMemory(searchableItems, query);

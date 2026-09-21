@@ -1,0 +1,61 @@
+.sync-dialog {
+  width: 320px;
+  max-width: 90vw;
+  padding: 20px;
+}
+
+.sync-form-group {
+  margin-top: 12px;
+}
+
+.sync-status-indicator {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+}
+
+.status-badge {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 6px 10px;
+  border-radius: 6px;
+  line-height: 1.3;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-off {
+  color: var(--md-sys-color-on-background);
+  opacity: 0.6;
+}
+
+.status-working {
+  color: var(--md-sys-color-primary);
+}
+
+.status-on {
+  background-color: rgba(76, 175, 80, 0.15);
+  color: #81c784;
+}
+
+.status-error {
+  background-color: rgba(244, 67, 54, 0.15);
+  color: #e57373;
+}
+
+.spin-icon {
+  animation: spin 1.2s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.sync-actions {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}

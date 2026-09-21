@@ -103,3 +103,40 @@
   85% { opacity: 1; transform: translate(-50%, 0); }
   100% { opacity: 0; transform: translate(-50%, 10px); }
 }
+
+.prompt-detail-screen {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.sync-status-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background-color: var(--md-sys-color-surface-container-high, rgba(255, 255, 255, 0.05));
+  border-bottom: 1px solid var(--md-sys-color-surface-variant);
+  font-size: 11px;
+  color: var(--md-sys-color-on-background);
+}
+
+.sync-banner-icon {
+  font-size: 10px;
+}
+
+.sync-banner-text {
+  font-weight: 500;
+  opacity: 0.9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sync-banner-icon {
+  color: #81c784;
+  flex-shrink: 0;
+}

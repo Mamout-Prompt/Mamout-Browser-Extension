@@ -26,6 +26,33 @@ export class AppDatabase extends Dexie {
       prompts: '++id, title',
       promptContents: 'promptId',
     });
+
+    this.version(2)
+      .stores({
+        prompts: '++id, title, lastModified',
+        promptContents: 'promptId, lastModified',
+      })
+      .upgrade(async (tx) => {
+        const now = Date.now();
+
+        await tx
+          .table<PromptEntity>('prompts')
+          .toCollection()
+          .modify((prompt) => {
+            if (!prompt.lastModified) {
+              prompt.lastModified = now;
+            }
+          });
+
+        await tx
+          .table<PromptContentEntity>('promptContents')
+          .toCollection()
+          .modify((content) => {
+            if (!content.lastModified) {
+              content.lastModified = now;
+            }
+          });
+      });
   }
 }
 

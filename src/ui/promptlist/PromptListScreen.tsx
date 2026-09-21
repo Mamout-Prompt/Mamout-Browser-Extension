@@ -1,6 +1,8 @@
 import { type Prompt, PromptCard } from './components/PromptCard';
 import { HomeSearchBar } from './components/HomeSearchBar';
 import { DeleteConfirmationDialog } from './components/DeleteConfirmationDialog';
+import { SyncClient, type ConnectionState } from '../../sync/SyncClient';
+import { SyncModal } from '../sync/SyncModal';
 import './PromptListScreen.css';
 
 export type PromptListUiState =
@@ -61,11 +63,39 @@ export const PromptListScreen: React.FC<PromptListScreenProps> = ({
   onDeleteConfirmed,
   onAddPromptClick,
 }) => {
+  const [showSyncModal, setShowSyncModal] = useState(false);
+  const [syncState, setSyncState] = useState<ConnectionState>(SyncClient.getState());
+
+  useEffect(() => {
+    const unsubscribe = SyncClient.subscribeState((state) => {
+      setSyncState(state);
+    });
+    return () => unsubscribe();
+  }, []);
+
   return (
     <div className="prompt-list-screen">
       <header className="search-bar-container">
         <HomeSearchBar onSearchClick={onSearchClick} />
+        <button
+          className={`icon-button sync-toggle-btn ${syncState.type === 'connected' ? 'sync-active' : ''}`}
+          onClick={() => setShowSyncModal(true)}
+          title={syncState.type === 'connected' ? 'Synchronization Active' : 'Configure Remote Sync'}
+        >
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+            <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z" />
+          </svg>
+        </button>
       </header>
+
+      {syncState.type === 'connected' && (
+        <div className="sync-status-banner">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" className="sync-banner-icon">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+          </svg>
+          <span className="sync-banner-text">Synchronized with {syncState.url}</span>
+        </div>
+      )}
 
       <main className="content-area">
         {uiState.type === 'loading' && (
@@ -121,6 +151,8 @@ export const PromptListScreen: React.FC<PromptListScreenProps> = ({
           <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
         </svg>
       </button>
+
+      {showSyncModal && <SyncModal onDismiss={() => setShowSyncModal(false)} />}
     </div>
   );
 };

@@ -17,6 +17,11 @@ export interface PromptEntity {
    * A short summary or descriptive overview of the prompt.
    */
   description: string;
+
+  /**
+   * Epoch timestamp (in milliseconds) indicating when the prompt header was last modified.
+   */
+  lastModified?: number;
 }
 
 /**
@@ -32,6 +37,11 @@ export interface PromptContentEntity {
    * The raw text content of the prompt template, including dynamic input tags.
    */
   templateText: string;
+
+  /**
+   * Epoch timestamp (in milliseconds) indicating when the template content was last modified.
+   */
+  lastModified?: number;
 }
 
 /**
@@ -57,4 +67,9 @@ export interface PromptSearchableDb {
    * The joined raw template content text used for search filtering.
    */
   templateText: string;
+
+  /**
+   * Epoch timestamp (in milliseconds) indicating when the prompt or its content was last modified.
+   */
+  lastModified: number;
 }

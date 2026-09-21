@@ -2,6 +2,8 @@ import { PromptDetailTopBar } from './components/PromptDetailTopBar';
 import { EditHeaderDialog } from './components/EditHeaderDialog';
 import { PromptViewerScreen } from '../promptviewer/PromptViewerScreen';
 import { type PromptSegment } from '../promptviewer/components/InteractivePromptViewer';
+import { SyncClient, type ConnectionState } from '../../sync/SyncClient';
+import { SyncModal } from '../sync/SyncModal';
 import './PromptDetailScreen.css';
 
 declare const chrome: any;
@@ -133,32 +135,47 @@ export const PromptDetailScreen: React.FC<PromptDetailScreenProps> = ({
   const [templateText, setTemplateText] = useState(rawTemplateText);
   const [inputValues, setInputValues] = useState<Record<string, string>>({});
   const [isEditingHeader, setIsEditingHeader] = useState(false);
+  const [showSyncModal, setShowSyncModal] = useState(false);
+  const [syncState, setSyncState] = useState<ConnectionState>(SyncClient.getState());
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isDraftLoaded, setIsDraftLoaded] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
     const restoreDraft = async () => {
       try {
         const draft = await loadEditDraft(promptId);
-        if (draft) {
-          setTitle(draft.title ?? initialTitle);
-          setDescription(draft.description ?? initialDescription);
-          setTemplateText(draft.templateText ?? rawTemplateText);
-          setInputValues(draft.inputValues ?? {});
-        } else {
-          setTitle(initialTitle);
-          setDescription(initialDescription);
-          setTemplateText(rawTemplateText);
-          setInputValues({});
+        if (isMounted) {
+          if (draft) {
+            setTitle(draft.title ?? initialTitle);
+            setDescription(draft.description ?? initialDescription);
+            setTemplateText(draft.templateText ?? rawTemplateText);
+            setInputValues(draft.inputValues ?? {});
+          } else {
+            setTitle(initialTitle);
+            setDescription(initialDescription);
+            setTemplateText(rawTemplateText);
+            setInputValues({});
+          }
         }
       } catch (e) {
-        console.error('Errore nel caricamento della bozza di modifica:', e);
+        console.error('Error loading edit draft:', e);
       } finally {
-        setIsDraftLoaded(true);
+        if (isMounted) setIsDraftLoaded(true);
       }
     };
 
     restoreDraft();
+    return () => {
+      isMounted = false;
+    };
+  }, [promptId]);
+
+  useEffect(() => {
+    setTitle(initialTitle);
+    setDescription(initialDescription);
+    setTemplateText(rawTemplateText);
+    clearEditDraft(promptId);
   }, [promptId, initialTitle, initialDescription, rawTemplateText]);
 
   useEffect(() => {
@@ -172,6 +189,13 @@ export const PromptDetailScreen: React.FC<PromptDetailScreenProps> = ({
     });
   }, [promptId, title, description, templateText, inputValues, isDraftLoaded]);
 
+  useEffect(() => {
+    const unsubscribe = SyncClient.subscribeState((state) => {
+      setSyncState(state);
+    });
+    return () => unsubscribe();
+  }, []);
+
   const currentSegments = useMemo(() => {
     return parsePromptSegments(templateText);
   }, [templateText]);
@@ -184,6 +208,7 @@ export const PromptDetailScreen: React.FC<PromptDetailScreenProps> = ({
   const handleSave = async () => {
     await clearEditDraft(promptId);
     onSavePrompt(promptId, title, description, templateText);
+    SyncClient.syncAll();
     showToast('Saved!');
   };
 
@@ -211,6 +236,15 @@ export const PromptDetailScreen: React.FC<PromptDetailScreenProps> = ({
         onCopyClick={handleCopyCompiled}
       />
 
+      {syncState.type === 'connected' && (
+        <div className="sync-status-banner">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" className="sync-banner-icon">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+          </svg>
+          <span className="sync-banner-text">Synchronized with {syncState.url}</span>
+        </div>
+      )}
+
       <div className="prompt-detail-content">
         <PromptViewerScreen
           templateText={templateText}
@@ -230,6 +264,8 @@ export const PromptDetailScreen: React.FC<PromptDetailScreenProps> = ({
           onDismiss={() => setIsEditingHeader(false)}
         />
       )}
+
+      {showSyncModal && <SyncModal onDismiss={() => setShowSyncModal(false)} />}
 
       {toastMessage && <div className="toast-notification">{toastMessage}</div>}
     </div>

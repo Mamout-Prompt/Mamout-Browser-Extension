@@ -4,12 +4,12 @@ import { SearchScreen, type SearchUiState } from '../../src/ui/search/SearchScre
 import { PromptDetailScreen } from '../../src/ui/promptdetail/PromptDetailScreen';
 import { AddPromptScreen } from '../../src/ui/addprompt/AddPromptScreen';
 import { type PromptSegment } from '../../src/ui/promptviewer/components/InteractivePromptViewer';
+import { SyncClient } from '../../src/sync/SyncClient';
 
 import {
   getSearchablePrompts,
   insertPromptWithContent,
-  updatePrompt,
-  updatePromptContent,
+  updatePromptWithContent,
   deletePromptById,
 } from '../../src/db/repository';
 import type { PromptSearchableDb } from '../../src/types/prompt';
@@ -109,15 +109,21 @@ export const App: React.FC = () => {
   });
 
   useEffect(() => {
-    const subscription = getSearchablePrompts().subscribe({
-      next: (data) => {
-        setPrompts(data);
-      },
-      error: (err) => console.error('Errore durante il caricamento dei prompt:', err),
-    });
+  const subscription = getSearchablePrompts().subscribe({
+    next: (data) => {
+      setPrompts(data);
 
-    return () => subscription.unsubscribe();
-  }, []);
+      setActivePrompt((prevActive) => {
+        if (!prevActive) return null;
+        const updated = data.find((p) => p.id === prevActive.id);
+        return updated || prevActive;
+      });
+    },
+    error: (err) => console.error('Error loading prompts:', err),
+  });
+
+  return () => subscription.unsubscribe();
+}, []);
 
   useEffect(() => {
     const restoreState = async () => {
@@ -133,7 +139,7 @@ export const App: React.FC = () => {
           }
         }
       } catch (e) {
-        console.error('Errore nel ripristino dello stato UI:', e);
+        console.error('Error restoring UI state:', e);
       } finally {
         setIsInitialized(true);
       }
@@ -202,6 +208,8 @@ export const App: React.FC = () => {
       if (activePrompt?.id === idToDelete) {
         setActivePrompt(null);
       }
+
+      SyncClient.syncAll();
     }
   };
 
@@ -214,6 +222,8 @@ export const App: React.FC = () => {
       if (activePrompt?.id === homeSelectedId) {
         setActivePrompt(null);
       }
+
+      SyncClient.syncAll();
     }
   };
 
@@ -284,16 +294,19 @@ export const App: React.FC = () => {
           rawTemplateText={activePrompt.templateText || activePrompt.description}
           onBackClick={() => navigateTo('home')}
           onSavePrompt={async (id, updatedTitle, updatedDesc, updatedText) => {
-            await updatePrompt({ id, title: updatedTitle, description: updatedDesc });
-            await updatePromptContent(id, updatedText);
+            const now = Date.now();
+            await updatePromptWithContent(id, updatedTitle, updatedDesc, updatedText, now);
 
-            const updatedObj = {
+            const updatedObj: PromptSearchableDb = {
               id,
               title: updatedTitle,
               description: updatedDesc,
               templateText: updatedText,
+              lastModified: now,
             };
             setActivePrompt(updatedObj);
+
+            SyncClient.syncAll();
           }}
         />
       )}
@@ -307,6 +320,8 @@ export const App: React.FC = () => {
               { title: newTitle, description: newDesc },
               newTemplateText
             );
+
+            SyncClient.syncAll();
 
             navigateTo('home');
           }}

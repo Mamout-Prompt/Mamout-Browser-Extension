@@ -14,7 +14,11 @@ import type {
  * @returns A promise that resolves to the auto-generated or inserted primary key ID.
  */
 export async function insertPrompt(prompt: PromptEntity): Promise<number> {
-  return await db.prompts.put(prompt);
+  const entity: PromptEntity = {
+    ...prompt,
+    lastModified: prompt.lastModified ?? Date.now(),
+  };
+  return await db.prompts.put(entity);
 }
 
 /**
@@ -24,7 +28,11 @@ export async function insertPrompt(prompt: PromptEntity): Promise<number> {
  * @returns A promise that resolves to the primary key (`promptId`) of the inserted or replaced content record.
  */
 export async function insertContent(content: PromptContentEntity): Promise<number> {
-  return await db.promptContents.put(content);
+  const entity: PromptContentEntity = {
+    ...content,
+    lastModified: content.lastModified ?? Date.now(),
+  };
+  return await db.promptContents.put(entity);
 }
 
 /**
@@ -70,6 +78,7 @@ export function getSearchablePrompts(): Observable<PromptSearchableDb[]> {
           title: prompt.title,
           description: prompt.description,
           templateText: content.templateText,
+          lastModified: prompt.lastModified ?? content.lastModified ?? Date.now(),
         };
       })
     );
@@ -99,6 +108,7 @@ export function getSearchablePromptById(
       title: prompt.title,
       description: prompt.description,
       templateText: content.templateText,
+      lastModified: prompt.lastModified ?? content.lastModified ?? Date.now(),
     };
   });
 }
@@ -114,7 +124,12 @@ export async function updatePrompt(prompt: PromptEntity): Promise<void> {
     throw new Error('Cannot update prompt header: Missing entity primary key ID.');
   }
 
-  await db.prompts.put(prompt);
+  const entity: PromptEntity = {
+    ...prompt,
+    lastModified: Date.now(),
+  };
+
+  await db.prompts.put(entity);
 }
 
 /**
@@ -124,11 +139,16 @@ export async function updatePrompt(prompt: PromptEntity): Promise<void> {
  * @returns A promise that resolves when the update completes.
  */
 export async function updateContent(content: PromptContentEntity): Promise<void> {
-  await db.promptContents.put(content);
+  const entity: PromptContentEntity = {
+    ...content,
+    lastModified: Date.now(),
+  };
+
+  await db.promptContents.put(entity);
 }
 
 /**
- * Updates the template text for a specific prompt content record.
+ * Updates the template text for a specific prompt content record and updates `lastModified`.
  *
  * @param promptId - The unique identifier of the prompt content to update.
  * @param templateText - The new raw template text to be stored.
@@ -138,7 +158,11 @@ export async function updatePromptContent(
   promptId: number,
   templateText: string
 ): Promise<void> {
-  await db.promptContents.update(promptId, { templateText });
+  const now = Date.now();
+  await db.transaction('rw', [db.prompts, db.promptContents], async () => {
+    await db.promptContents.update(promptId, { templateText, lastModified: now });
+    await db.prompts.update(promptId, { lastModified: now });
+  });
 }
 
 /**
@@ -152,18 +176,19 @@ export async function upsertPromptContent(
   promptId: number,
   templateText: string
 ): Promise<void> {
-  await db.promptContents.put({
-    promptId,
-    templateText,
+  const now = Date.now();
+  await db.transaction('rw', [db.prompts, db.promptContents], async () => {
+    await db.promptContents.put({
+      promptId,
+      templateText,
+      lastModified: now,
+    });
+    await db.prompts.update(promptId, { lastModified: now });
   });
 }
+
 /**
  * Inserts a new prompt header together with its content in a single atomic transaction.
- *
- * Wrapping both inserts in a transaction prevents a "ghost" prompt: without it, a crash
- * between the two inserts could leave a `PromptEntity` with no matching
- * `PromptContentEntity`, which would show up in `getPrompts` but silently disappear from
- * `getSearchablePrompts` / `getSearchablePromptById` due to their INNER JOIN logic
  *
  * @param prompt - The prompt header entity to insert.
  * @param templateText - The raw template text for the new prompt's content.
@@ -173,12 +198,18 @@ export async function insertPromptWithContent(
   prompt: PromptEntity,
   templateText: string
 ): Promise<number> {
+  const now = Date.now();
+
   return await db.transaction('rw', [db.prompts, db.promptContents], async () => {
-    const promptId = await db.prompts.add(prompt);
+    const promptId = await db.prompts.add({
+      ...prompt,
+      lastModified: prompt.lastModified ?? now,
+    });
 
     await db.promptContents.put({
       promptId,
       templateText,
+      lastModified: now,
     });
 
     return promptId;
@@ -196,12 +227,7 @@ export async function deletePrompt(prompt: PromptEntity): Promise<void> {
     throw new Error('Cannot delete prompt header: Missing entity primary key ID.');
   }
 
-  const promptId = prompt.id;
-
-  await db.transaction('rw', [db.prompts, db.promptContents], async () => {
-    await db.prompts.delete(promptId);
-    await db.promptContents.delete(promptId);
-  });
+  await deletePromptById(prompt.id);
 }
 
 /**
@@ -215,4 +241,143 @@ export async function deletePromptById(promptId: number): Promise<void> {
     await db.prompts.delete(promptId);
     await db.promptContents.delete(promptId);
   });
+}
+
+/**
+ * Retrieves all searchable prompt projections synchronously as a direct Promise array (non-observable).
+ *
+ * @returns A promise resolving to an array of all `PromptSearchableDb` database projections.
+ */
+export async function getSearchablePromptsSync(): Promise<PromptSearchableDb[]> {
+  const prompts = await db.prompts.toArray();
+
+  const results = await Promise.all(
+    prompts.map(async (prompt) => {
+      if (prompt.id === undefined) return null;
+
+      const content = await db.promptContents.get(prompt.id);
+      if (!content) return null;
+
+      return {
+        id: prompt.id,
+        title: prompt.title,
+        description: prompt.description,
+        templateText: content.templateText,
+        lastModified: prompt.lastModified ?? content.lastModified ?? Date.now(),
+      };
+    })
+  );
+
+  return results.filter((item): item is PromptSearchableDb => item !== null);
+}
+
+/**
+ * Alias for `getSearchablePromptsSync`.
+ * Retrieves all searchable prompts directly as a Promise array.
+ *
+ * @returns A promise resolving to an array of all `PromptSearchableDb` database projections.
+ */
+export async function getAllPromptsSync(): Promise<PromptSearchableDb[]> {
+  return await getSearchablePromptsSync();
+}
+
+/**
+ * Retrieves a single searchable prompt database projection matching a specific title and description.
+ *
+ * @param title - The display title of the target prompt.
+ * @param description - The description overview of the target prompt.
+ * @returns A promise resolving to the matching `PromptSearchableDb` projection, or `undefined` if not found.
+ */
+export async function getSearchablePromptByTitleAndDescription(
+  title: string,
+  description: string
+): Promise<PromptSearchableDb | undefined> {
+  const prompt = await db.prompts
+    .where('title')
+    .equals(title)
+    .filter((p) => p.description === description)
+    .first();
+
+  if (!prompt || prompt.id === undefined) return undefined;
+
+  const content = await db.promptContents.get(prompt.id);
+  if (!content) return undefined;
+
+  return {
+    id: prompt.id,
+    title: prompt.title,
+    description: prompt.description,
+    templateText: content.templateText,
+    lastModified: prompt.lastModified ?? content.lastModified ?? Date.now(),
+  };
+}
+
+/**
+ * Updates a prompt header details and content in a single atomic transaction.
+ *
+ * @param promptId - The unique identifier of the prompt to update.
+ * @param title - The new title string.
+ * @param description - The new description string.
+ * @param templateText - The new raw template text.
+ * @param lastModified - Optional epoch timestamp (defaults to current time).
+ * @returns A promise that resolves when the update completes.
+ */
+export async function updatePromptWithContent(
+  promptId: number,
+  title: string,
+  description: string,
+  templateText: string,
+  lastModified: number = Date.now()
+): Promise<void> {
+  await db.transaction('rw', [db.prompts, db.promptContents], async () => {
+    await db.prompts.update(promptId, {
+      title,
+      description,
+      lastModified,
+    });
+    await db.promptContents.put({
+      promptId,
+      templateText,
+      lastModified,
+    });
+  });
+}
+
+/**
+ * Synchronizes an incoming list of prompts with the local database based on `lastModified` timestamps.
+ * Updates local prompts if incoming data is newer; otherwise inserts new entries atomically.
+ *
+ * @param prompts - List of incoming searchable prompt projections to sync.
+ * @returns A promise that resolves when the synchronization operation completes.
+ */
+export async function syncPrompts(
+  prompts: PromptSearchableDb[]
+): Promise<void> {
+  for (const incoming of prompts) {
+    const existing = await getSearchablePromptByTitleAndDescription(
+      incoming.title,
+      incoming.description
+    );
+
+    if (existing) {
+      if (incoming.lastModified > existing.lastModified) {
+        await updatePromptWithContent(
+          existing.id,
+          incoming.title,
+          incoming.description,
+          incoming.templateText,
+          incoming.lastModified
+        );
+      }
+    } else {
+      await insertPromptWithContent(
+        {
+          title: incoming.title,
+          description: incoming.description,
+          lastModified: incoming.lastModified,
+        },
+        incoming.templateText
+      );
+    }
+  }
 }
