@@ -6,7 +6,7 @@ html, body, #root {
   margin: 0;
   padding: 0;
   width: 380px;
-  height: 520px;
+  height: 560px;
   overflow: hidden;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
 }
