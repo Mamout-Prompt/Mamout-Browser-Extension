@@ -10,6 +10,7 @@ The core strength of Mamout is its custom template engine, which transforms stat
 - **AI-Powered Templatization** — Automatically convert raw text into dynamic templates via an LLM-based analysis module.
 - **Interactive Prompt Viewer** — Automatically generates UI components for template variables, with real-time prompt compilation and preview.
 - **Advanced Search** — Quickly locate prompts by title, description, or template content.
+- **Real-Time Device Sync** — Client-side WebSocket integration that connects seamlessly to the Mamout server app over the local network, synchronizing prompts bidirectionally using timestamp-based (`lastModified`) conflict resolution.
 - **Material 3 Design Tokens** — Modern UI styled with CSS variables inspired by Material Design 3 guidelines.
 - **Offline First** — Full local persistence using IndexedDB (via Dexie.js); your prompts remain accessible without an internet connection.
 
@@ -20,6 +21,7 @@ The core strength of Mamout is its custom template engine, which transforms stat
 | Language | TypeScript |
 | UI Library | React |
 | Database | IndexedDB (Dexie.js) |
+| Real-Time Sync | Native WebSockets Client + Dexie.js Reconciliation |
 | State Persistence | Chrome Storage API / `localStorage` fallback |
 | Styling | Custom CSS3 (Material Design 3 Tokens) |
 
@@ -45,6 +47,17 @@ Translate the following text to <INPUT type="options" values="Italian, French, S
 ## AI Integration
 
 Mamout includes a `TemplatizePromptUseCase` designed to interface with Large Language Models. It uses a marker-based positioning system (`|N|`) so an LLM can identify insertion and edit points without altering the original text structure — ensuring high precision when converting existing prompts into dynamic Mamout templates while avoiding truncation issues.
+
+## Real-Time Synchronization
+
+The Mamout browser extension includes a built-in client-side WebSocket module that connects to the Mamout mobile app server over Wi-Fi / local network for instant, bi-directional prompt alignment.
+
+### Key Highlights
+
+- **Client-Side WebSocket Integration** — Manages persistent WebSocket client connections (`SyncClient.ts`) to the host address configured by the user in the extension UI.
+- **Automated Real-Time Broadcasts** — Automatically transmits updated local prompts to the server upon creation, modification, or deletion actions in the extension.
+- **Conflict Resolution** — Reconciles incoming prompt payloads into local IndexedDB storage using atomic Dexie transactions and `lastModified` timestamp comparisons.
+- **Connection Management UI** — Features a Material 3 `SyncModal` and top-bar status indicators for configuring server IP/port addresses, displaying active connection states, and toggling sync operations.
 
 ## Getting Started
 
