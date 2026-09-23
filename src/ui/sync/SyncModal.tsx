@@ -1,4 +1,3 @@
-import React, { useState, useEffect } from 'react';
 import { SyncClient, type ConnectionState } from '../../sync/SyncClient';
 import './SyncModal.css';
 
